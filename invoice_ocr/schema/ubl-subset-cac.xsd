@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Aggregate components (cac) of the UBL 2.1 subset. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+           xmlns="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+           xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+           elementFormDefault="qualified">
+  <xs:import namespace="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+             schemaLocation="ubl-subset-cbc.xsd"/>
+
+  <xs:element name="TaxScheme">
+    <xs:complexType><xs:sequence><xs:element ref="cbc:ID"/></xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="PartyTaxScheme">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="cbc:CompanyID"/>
+      <xs:element ref="TaxScheme"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="PartyLegalEntity">
+    <xs:complexType><xs:sequence><xs:element ref="cbc:RegistrationName"/></xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="Party">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="PartyTaxScheme" minOccurs="0"/>
+      <xs:element ref="PartyLegalEntity" minOccurs="0"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="AccountingSupplierParty">
+    <xs:complexType><xs:sequence><xs:element ref="Party"/></xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="TaxCategory">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="cbc:ID"/>
+      <xs:element ref="cbc:Percent"/>
+      <xs:element ref="TaxScheme"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="TaxSubtotal">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="cbc:TaxableAmount"/>
+      <xs:element ref="cbc:TaxAmount"/>
+      <xs:element ref="TaxCategory"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="TaxTotal">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="cbc:TaxAmount"/>
+      <xs:element ref="TaxSubtotal" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+  <xs:element name="LegalMonetaryTotal">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="cbc:LineExtensionAmount" minOccurs="0"/>
+      <xs:element ref="cbc:TaxExclusiveAmount" minOccurs="0"/>
+      <xs:element ref="cbc:TaxInclusiveAmount" minOccurs="0"/>
+      <xs:element ref="cbc:PayableAmount" minOccurs="0"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+</xs:schema>

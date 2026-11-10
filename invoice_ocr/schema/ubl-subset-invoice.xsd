@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Root of the UBL 2.1 Invoice subset written by invoice-ocr-local.
+     Not the full OASIS schema: no invoice lines, no customer party, no addresses.
+     A document valid here keeps UBL names, namespaces and element order, so it can be
+     completed into a Peppol BIS Billing 3.0 invoice; it is not one as it stands. -->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+           xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+           xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+           elementFormDefault="qualified">
+  <xs:import namespace="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+             schemaLocation="ubl-subset-cbc.xsd"/>
+  <xs:import namespace="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+             schemaLocation="ubl-subset-cac.xsd"/>
+
+  <xs:element name="Invoice">
+    <xs:complexType><xs:sequence>
+      <xs:element ref="cbc:CustomizationID"/>
+      <xs:element ref="cbc:ID" minOccurs="0"/>
+      <xs:element ref="cbc:IssueDate" minOccurs="0"/>
+      <xs:element ref="cbc:DueDate" minOccurs="0"/>
+      <xs:element ref="cbc:InvoiceTypeCode"/>
+      <xs:element ref="cbc:Note"/>
+      <xs:element ref="cbc:DocumentCurrencyCode"/>
+      <xs:element ref="cac:AccountingSupplierParty"/>
+      <xs:element ref="cac:TaxTotal" minOccurs="0"/>
+      <xs:element ref="cac:LegalMonetaryTotal"/>
+    </xs:sequence></xs:complexType>
+  </xs:element>
+</xs:schema>

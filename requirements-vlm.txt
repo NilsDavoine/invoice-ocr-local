@@ -1,0 +1,7 @@
+# Optional: PP-DocLayoutV3 + Xiaomi-OCR-0 (about 2 GB of weights, downloaded on first use).
+# CUDA 11.8 build; for CPU only, use https://download.pytorch.org/whl/cpu and drop "+cu118".
+--extra-index-url https://download.pytorch.org/whl/cu118
+-r requirements.txt
+torch==2.7.1+cu118
+torchvision==0.22.1+cu118
+transformers==5.17.0

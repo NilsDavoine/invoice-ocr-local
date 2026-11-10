@@ -1,0 +1,131 @@
+{
+ "trials": 1800,
+ "changed_a_field": 924,
+ "flagged": 805,
+ "per_field": {
+  "supplier_name": {
+   "changed": 0,
+   "flagged": 0
+  },
+  "supplier_vat": {
+   "changed": 111,
+   "flagged": 111
+  },
+  "invoice_number": {
+   "changed": 89,
+   "flagged": 0
+  },
+  "issue_date": {
+   "changed": 77,
+   "flagged": 63
+  },
+  "due_date": {
+   "changed": 81,
+   "flagged": 65
+  },
+  "net_total": {
+   "changed": 87,
+   "flagged": 87
+  },
+  "tax_total": {
+   "changed": 125,
+   "flagged": 125
+  },
+  "gross_total": {
+   "changed": 83,
+   "flagged": 83
+  },
+  "vat_breakdown": {
+   "changed": 376,
+   "flagged": 376
+  }
+ },
+ "silent_examples": [
+  {
+   "id": "INV-00",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Facture n° RE2826/300"
+  },
+  {
+   "id": "INV-00",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Facture n° RE2020/300"
+  },
+  {
+   "id": "INV-00",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Facture n° RE2026/800"
+  },
+  {
+   "id": "INV-01",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Invoice No. 2026601-A of 2026-10-07"
+  },
+  {
+   "id": "INV-01",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Invoice No. 2026701-A of 2026-10-07"
+  },
+  {
+   "id": "INV-01",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Invoice No. 2025001-A of 2026-10-07"
+  },
+  {
+   "id": "INV-01",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Invoice No. 2526001-A of 2026-10-07"
+  },
+  {
+   "id": "INV-01",
+   "fields": [
+    "issue_date"
+   ],
+   "row": "Invoice No. 2026001-A of 2026-10-02"
+  },
+  {
+   "id": "INV-01",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Invoice No. 2026801-A of 2026-10-07"
+  },
+  {
+   "id": "INV-02",
+   "fields": [
+    "due_date"
+   ],
+   "row": "Zahlbar bis 30.11.2026"
+  },
+  {
+   "id": "INV-03",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Facture n° 2025003-A du 26 août 2026"
+  },
+  {
+   "id": "INV-03",
+   "fields": [
+    "invoice_number"
+   ],
+   "row": "Facture n° 2026007-A du 26 août 2026"
+  }
+ ],
+ "per_invoice": 50,
+ "seed": 11
+}
