@@ -2,6 +2,7 @@
 
 The report (report.py) is computed from these files only; no number is typed by hand.
 """
+import hashlib
 import json
 import platform
 import re
@@ -14,6 +15,7 @@ from . import engines, pipeline
 from .textnorm import fold
 
 AS_OF = date(2026, 11, 10)   # fixed "today", so that date checks are reproducible
+RULE_FILES = ("extract.py", "checks.py", "textnorm.py", "vat.py")
 FIELDS = ("supplier_name", "supplier_vat", "invoice_number", "issue_date", "due_date",
           "net_total", "tax_total", "gross_total", "vat_breakdown")
 
@@ -50,9 +52,19 @@ def _expected(t):
     }
 
 
+def rules_hash():
+    """Short hash of the extraction rules and checks, stored with every run: the held-out
+    runs can be checked to use the same rules as the tuning runs."""
+    h = hashlib.sha256()
+    for f in RULE_FILES:
+        h.update((Path(__file__).parent / f).read_bytes())
+    return h.hexdigest()[:12]
+
+
 def run(engine_name, data_dir="data", out_dir="results", device="auto", limit=None, ids=None):
     data = Path(data_dir)
     truth = json.loads((data / "truth.json").read_text(encoding="utf-8"))
+    dataset = "holdout" if truth and truth[0].get("set") == "holdout" else "tuning"
     if ids:
         truth = [t for t in truth if t["id"] in ids]
     if limit:
@@ -60,6 +72,9 @@ def run(engine_name, data_dir="data", out_dir="results", device="auto", limit=No
     eng = engines.get(engine_name, device)
     records = []
     started = time.perf_counter()
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    path = None
     for t in truth:
         src = data / ("pdf" if engine_name == "textlayer" else "images") / \
             f"{t['id']}.{'pdf' if engine_name == 'textlayer' else 'png'}"
@@ -78,30 +93,32 @@ def run(engine_name, data_dir="data", out_dir="results", device="auto", limit=No
         })
         print(f"{t['id']} {res.status:9s} fields ok {sum(correct.values())}/{len(FIELDS)} "
               f"{res.seconds_total:6.1f}s {','.join(records[-1]['issues'])}", flush=True)
-    meta = {
-        "engine": engine_name, "device": getattr(eng, "device", None),
-        "precision": getattr(eng, "precision", None), "fallback": getattr(eng, "fallback", ""),
-        "load_seconds": getattr(eng, "load_seconds", None), "n": len(records),
-        "subset": bool(limit or ids), "as_of": str(AS_OF),
-        "run_at": datetime.now().isoformat(timespec="seconds"),
-        "wall_seconds": round(time.perf_counter() - started, 1),
-        "machine": f"{platform.processor() or platform.machine()}, {_cpu()}", "gpu": _gpu(eng),
-    }
-    out = Path(out_dir)
-    out.mkdir(parents=True, exist_ok=True)
-    dev = (meta["device"] or "cpu").split("/")[0]
-    path = out / f"{engine_name}_{dev}{'_subset' if meta['subset'] else ''}.json"
-    path.write_text(json.dumps({"meta": meta, "records": records}, indent=1), encoding="utf-8")
+        # written after every invoice, so that a run stopped by a time limit keeps what it measured
+        meta = {
+            "engine": engine_name, "device": getattr(eng, "device", None),
+            "precision": getattr(eng, "precision", None), "fallback": getattr(eng, "fallback", ""),
+            "load_seconds": getattr(eng, "load_seconds", None), "n": len(records),
+            "planned": len(truth), "subset": bool(limit or ids), "dataset": dataset,
+            "rules": rules_hash(), "as_of": str(AS_OF),
+            "run_at": datetime.now().isoformat(timespec="seconds"),
+            "wall_seconds": round(time.perf_counter() - started, 1),
+            "machine": f"{platform.processor() or platform.machine()}, {_cpu()}", "gpu": _gpu(eng),
+        }
+        dev = (meta["device"] or "cpu").split("/")[0]
+        tag = ("_holdout" if dataset == "holdout" else "") + ("_subset" if meta["subset"] else "")
+        path = out / f"{engine_name}_{dev}{tag}.json"
+        path.write_text(json.dumps({"meta": meta, "records": records}, indent=1), encoding="utf-8")
     return path
 
 
-def rescore(json_path, data_dir="data"):
+def rescore(json_path, data_dir=None):
     """Re-run extraction, checks and XML on the OCR rows stored in a results file.
     Reading times are kept; used when only the rules changed, not the OCR."""
     from . import checks, ubl
     from .extract import extract
     path = Path(json_path)
     run_data = json.loads(path.read_text(encoding="utf-8"))
+    data_dir = data_dir or ("data_holdout" if run_data["meta"].get("dataset") == "holdout" else "data")
     truth = {t["id"]: t for t in json.loads((Path(data_dir) / "truth.json").read_text(encoding="utf-8"))}
     for r in run_data["records"]:
         if r["status"] == "REJECTED" and not r["rows"]:
@@ -119,6 +136,7 @@ def rescore(json_path, data_dir="data"):
         r["wrong"] = {f: [got[f], exp[f]] for f in FIELDS if not r["correct"][f]}
         r["status"], r["issues"] = status, sorted({i.code for i in issues})
     run_data["meta"]["rescored_at"] = datetime.now().isoformat(timespec="seconds")
+    run_data["meta"]["rules"] = rules_hash()
     path.write_text(json.dumps(run_data, indent=1), encoding="utf-8")
     return path
 

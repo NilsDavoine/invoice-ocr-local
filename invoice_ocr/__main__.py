@@ -1,9 +1,10 @@
 """Command line.
 
   python -m invoice_ocr generate                 # 40 fictitious invoices + ground truth in data/
+  python -m invoice_ocr generate --holdout       # 30 held-out invoices in data_holdout/
   python -m invoice_ocr process FILE... [--engine rapidocr]
   python -m invoice_ocr watch --inbox in --outbox out --rejects rejects [--engine rapidocr]
-  python -m invoice_ocr evaluate --engine rapidocr [--device cpu] [--limit N]
+  python -m invoice_ocr evaluate --engine rapidocr [--device cpu] [--limit N] [--data data_holdout]
   python -m invoice_ocr rescore results/x.json   # rules changed, OCR rows reused
   python -m invoice_ocr stress                   # simulated misreads -> results/stress.json
   python -m invoice_ocr report                   # results/*.json -> results.md
@@ -20,7 +21,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="invoice_ocr")
     sub = ap.add_subparsers(dest="cmd", required=True)
     g = sub.add_parser("generate")
-    g.add_argument("--out", default="data")
+    g.add_argument("--out")
+    g.add_argument("--holdout", action="store_true", help="the held-out test set (seed 7351, layout D)")
     p = sub.add_parser("process")
     p.add_argument("files", nargs="+")
     p.add_argument("--engine", default="rapidocr", choices=engines.NAMES)
@@ -47,8 +49,9 @@ def main(argv=None):
 
     if a.cmd == "generate":
         from . import synth
-        docs = synth.generate(a.out)
-        print(f"{len(docs)} invoices written to {a.out}/")
+        out = a.out or ("data_holdout" if a.holdout else "data")
+        docs = synth.generate(out, holdout=a.holdout)
+        print(f"{len(docs)} invoices written to {out}/")
     elif a.cmd == "process":
         from . import pipeline
         eng = engines.get(a.engine, a.device)

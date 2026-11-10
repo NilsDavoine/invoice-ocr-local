@@ -8,6 +8,15 @@ Output (in `out_dir`):
   images/INV-xx.png  the page as an image; about half are "scanned"
                      (slight rotation, blur, noise, JPEG artefacts)
   truth.json         what each document *prints*, plus the expected status
+
+Two sets:
+  tuning   (`generate`, seed 2026, 40 invoices, layouts A/B/C): the extraction rules
+           were written and adjusted on it.
+  held-out (`generate --holdout`, seed 7351, 30 invoices, TST-xx): written after the
+           rules were frozen, never used to change them. Six new suppliers, new invoice
+           number formats, and a fourth layout D that the rules never saw (metadata as
+           a grid: labels on one line, values on the line below; supplier VAT number
+           only in the footer; a separate VAT summary table).
 """
 import io
 import json
@@ -79,19 +88,43 @@ LABELS = {
                footer="Fiktive Rechnung, für Tests erzeugt"),
 }
 LANG_INDEX = {"fr": 0, "en": 1, "de": 2}
+GRID = {  # layout D only (held-out set): column headers of the metadata grid
+    "fr": dict(number="N° de facture", date="Date de facture", due="Date d'échéance", ref="Réf. client"),
+    "en": dict(number="Invoice number", date="Issue date", due="Payment due", ref="Customer ref."),
+    "de": dict(number="Rechnungsnummer", date="Datum", due="Zahlungsziel", ref="Kundennummer"),
+}
 
 # Deliberately inconsistent documents: the pipeline must flag them, whatever the OCR says.
 ANOMALIES = {7: "gross_mismatch", 15: "foreign_rate", 23: "bad_vat_id", 31: "due_before_issue"}
 
+# Held-out set: written after the rules were frozen. Same share of scans (each page has a
+# 50 % chance) and of deliberate anomalies (10 %, so 3 of 30), different everything else.
+HOLDOUT_SEED = 7351
+N_HOLDOUT = 30
+HOLDOUT_SUPPLIERS = [
+    ("Brouillon Menuiserie S.à r.l.", "LU", "4, rue de l'Ébauche", "L-0006 Croquisville"),
+    ("Exemplar Haustechnik GmbH", "DE", "Vorlageweg 19", "D-00003 Entwurfsheim"),
+    ("Specimen Print SRL", "BE", "Avenue Témoin 112", "B-0003 Spécimont"),
+    ("Fauxbois Paysage SAS", "FR", "2, allée du Simulacre", "F-00002 Leurre-sur-Test"),
+    ("Maquette Avocats S.C.S.", "LU", "18, boulevard Postiche", "L-0007 Factice"),
+    ("Probe Sicherheit AG", "DE", "Attrappenstraße 40", "D-00004 Scheinfeld"),
+]
+HOLDOUT_ANOMALIES = {5: "gross_mismatch", 14: "bad_vat_id", 26: "due_before_issue"}
 
-def _invoice_number(rng, i):
+
+def _invoice_number(rng, i, holdout=False):
+    if holdout:
+        return rng.choice([f"FA26-{1200 + 13 * i:05d}", f"2026.{i + 1:04d}", f"LX26/{i + 41:03d}/B",
+                           f"R{26}{900 + i}"])
     return rng.choice([f"F-2026-{100 + i:04d}", f"INV-{20500 + 7 * i}", f"RE2026/{300 + i}",
                        f"{2026}{i:03d}-A"])
 
 
-def build_truth(seed=SEED, n=N_INVOICES):
+def build_truth(seed=SEED, n=N_INVOICES, holdout=False):
     rng = random.Random(seed)
-    suppliers = [(name, vat.make(c, rng), street, city) for name, c, street, city in SUPPLIERS]
+    supplier_list = HOLDOUT_SUPPLIERS if holdout else SUPPLIERS
+    anomalies = HOLDOUT_ANOMALIES if holdout else ANOMALIES
+    suppliers = [(name, vat.make(c, rng), street, city) for name, c, street, city in supplier_list]
     customer_vat = vat.make("LU", rng)
     docs = []
     for i in range(n):
@@ -106,7 +139,7 @@ def build_truth(seed=SEED, n=N_INVOICES):
             unit = money(rng.uniform(4, 950))
             lines.append({"desc": labels[LANG_INDEX[lang]], "qty": qty, "unit": unit, "rate": rate,
                           "amount": money(unit * qty)})
-        anomaly = ANOMALIES.get(i)
+        anomaly = anomalies.get(i)
         if anomaly == "foreign_rate":
             lines[0]["rate"] = 20
         if anomaly == "bad_vat_id":
@@ -122,16 +155,21 @@ def build_truth(seed=SEED, n=N_INVOICES):
         net = sum((r["base"] for r in vat_rows), Decimal("0"))
         tax = sum((r["tax"] for r in vat_rows), Decimal("0"))
         gross = net + tax + (Decimal("10.00") if anomaly == "gross_mismatch" else 0)
-        docs.append({
-            "id": f"INV-{i:02d}", "lang": lang, "template": rng.choice("ABC"),
+        doc = {
+            "id": f"{'TST' if holdout else 'INV'}-{i:02d}", "lang": lang,
+            "template": rng.choice("ABCD" if holdout else "ABC"),
             "scanned": rng.random() < 0.5, "date_style": rng.randrange(2),
-            "number": _invoice_number(rng, i), "supplier_name": name, "supplier_vat": vat_id,
+            "number": _invoice_number(rng, i, holdout), "supplier_name": name, "supplier_vat": vat_id,
             "supplier_street": street, "supplier_city": city, "customer_vat": customer_vat,
             "issue_date": issue, "due_date": due, "delivery_date": issue - timedelta(days=rng.randrange(1, 9)),
             "lines": lines, "vat_rows": vat_rows, "net_total": net, "tax_total": tax,
             "gross_total": gross, "anomaly": anomaly,
             "expected_status": "TO_VERIFY" if anomaly else "OK",
-        })
+        }
+        if holdout:
+            doc["set"] = "holdout"
+            doc["customer_ref"] = f"C-{rng.randrange(1000, 9999)}"
+        docs.append(doc)
     return docs
 
 
@@ -159,6 +197,11 @@ def _render_pdf(doc, path):
     c.restoreState()
 
     t = doc["template"]
+    if t == "D":
+        _render_d(c, doc, L, fa, fd, W, H)
+        c.showPage()
+        c.save()
+        return
     x0, y = 50, H - 60
     # supplier header
     c.setFont("Helvetica-Bold", 17)
@@ -265,6 +308,84 @@ def _render_pdf(doc, path):
     c.save()
 
 
+def _render_d(c, doc, L, fa, fd, W, H):
+    """Layout D, held-out set only: a layout the extraction rules were never tuned on."""
+    G = GRID[doc["lang"]]
+    x0, xr, y = 50, W - 50, H - 60
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(x0, y, doc["supplier_name"])
+    c.setFont("Helvetica", 9.5)
+    c.drawString(x0, y - 16, f"{doc['supplier_street']} · {doc['supplier_city']}")
+    c.setFont("Helvetica-Bold", 22)
+    c.drawRightString(xr, y - 4, L["title"])
+
+    # metadata grid: one line of column headers, the values on the line below
+    y = H - 130
+    xs = [x0, 175, 300, 425]
+    c.setLineWidth(0.6)
+    c.rect(x0 - 6, y - 26, xr - x0 + 12, 42, stroke=1, fill=0)
+    c.setFont("Helvetica-Bold", 8.5)
+    for x, lab in zip(xs, (G["number"], G["date"], G["due"], G["ref"])):
+        c.drawString(x, y + 4, lab)
+    c.setFont("Helvetica", 10.5)
+    for x, val in zip(xs, (doc["number"], fd(doc["issue_date"]), fd(doc["due_date"]), doc["customer_ref"])):
+        c.drawString(x, y - 16, val)
+
+    # customer block, left
+    y = H - 200
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(x0, y, L["bill_to"])
+    c.setFont("Helvetica", 10)
+    for k, line in enumerate([CUSTOMER[0], CUSTOMER[1], CUSTOMER[2],
+                              f"{L['cust_vat']} : {doc['customer_vat']}"]):
+        c.drawString(x0, y - 14 * (k + 1), line)
+
+    # line items: amount column first after the description, rate last
+    y = H - 300
+    c.setFont("Helvetica-Bold", 9.5)
+    c.drawString(x0, y, L["desc"])
+    c.drawRightString(330, y, L["qty"])
+    c.drawRightString(420, y, L["unit"])
+    c.drawRightString(500, y, L["amount"])
+    c.drawRightString(xr, y, L["rate"])
+    c.line(x0, y - 4, xr, y - 4)
+    c.setFont("Helvetica", 9.5)
+    for ln in doc["lines"]:
+        y -= 17
+        c.drawString(x0, y, ln["desc"])
+        c.drawRightString(330, y, str(ln["qty"]))
+        c.drawRightString(420, y, fa(ln["unit"]))
+        c.drawRightString(500, y, fa(ln["amount"]))
+        c.drawRightString(xr, y, f"{ln['rate']} %")
+    c.line(x0, y - 6, xr, y - 6)
+
+    # VAT summary on the left, totals on the right, side by side
+    y -= 36
+    top = y
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(x0, y, L["s_rate"])
+    c.drawRightString(190, y, L["s_base"])
+    c.drawRightString(270, y, L["s_tax"])
+    c.setFont("Helvetica", 9)
+    for row in doc["vat_rows"]:
+        y -= 14
+        c.drawString(x0, y, f"{row['rate']} %")
+        c.drawRightString(190, y, fa(row["base"]))
+        c.drawRightString(270, y, fa(row["tax"]))
+    y = top
+    for lab, val, bold in [(L["net"], doc["net_total"], False), (L["tax_total"], doc["tax_total"], False),
+                           (L["gross"], doc["gross_total"], True)]:
+        c.setFont("Helvetica-Bold" if bold else "Helvetica", 11 if bold else 10)
+        c.drawString(340, y, lab)
+        c.drawRightString(xr, y, fa(val))
+        y -= 17
+
+    # supplier identification only in the footer
+    c.setFont("Helvetica", 8)
+    c.drawString(x0, 60, L["bank"])
+    c.drawString(x0, 48, f"{doc['supplier_name']} · {L['vat_id']} : {doc['supplier_vat']} · {L['footer']}")
+
+
 # --- "scanner" -----------------------------------------------------------------------
 
 def render_page(pdf_path, dpi=DPI):
@@ -303,11 +424,13 @@ def _json(doc):
     return out
 
 
-def generate(out_dir, seed=SEED, n=N_INVOICES):
+def generate(out_dir, seed=SEED, n=N_INVOICES, holdout=False):
     out = Path(out_dir)
     (out / "pdf").mkdir(parents=True, exist_ok=True)
     (out / "images").mkdir(parents=True, exist_ok=True)
-    docs = build_truth(seed, n)
+    if holdout and seed == SEED:
+        seed, n = HOLDOUT_SEED, (N_HOLDOUT if n == N_INVOICES else n)
+    docs = build_truth(seed, n, holdout)
     for k, doc in enumerate(docs):
         pdf_path = out / "pdf" / f"{doc['id']}.pdf"
         _render_pdf(doc, pdf_path)
