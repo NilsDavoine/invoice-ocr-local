@@ -120,7 +120,7 @@ amount 300 times and asserts that an incoherent result is never exported `OK`.
 ```bash
 make setup            # Python 3.12 venv (PYTHON=python3.12) + light dependencies (CPU)
 make data             # 40 invoices in data/ (about a minute)
-make test             # 43 unit tests, no model needed
+make test             # 45 unit tests, no model needed
 python -m invoice_ocr process data/images/INV-02.png --engine rapidocr --xml
 make bench            # textlayer + RapidOCR + mutation test -> results.md
 
@@ -138,10 +138,12 @@ Hugging Face on first use, at pinned revisions; nothing else leaves the machine.
 - **Models.** The real tool's pair (PP-DocLayoutV3 + Xiaomi-OCR-0) runs here, on the
   GPU in fp16. Without the optional `flash-linear-attention` / `causal-conv1d` kernels,
   Transformers falls back to its reference implementation of the model's linear
-  attention, which is slow; on CPU a page takes minutes, so the CPU figure is measured
-  on 3 pages only (about 50 s per page on the GPU, measured). RapidOCR is the practical
-  CPU option. Tesseract was not used: it is
-  not installed on the build machine and needs a system package.
+  attention, which is slow: about 50 s per page on the GPU (measured, 40 pages). The
+  CPU run of this pair (`make bench-vlm` does 3 pages) has **not been measured** for this
+  repository: the shared GPU/CPU lock was held by other jobs, and a CPU page is expected
+  to take minutes. So the only measured CPU option here is RapidOCR (about 6 s per page).
+  Tesseract was not used: it is not installed on the build machine and needs a system
+  package.
 - **The rules were tuned on the test set.** There is no held-out set. After the first
   Xiaomi-OCR-0 run, three formatting quirks of its output were handled (a value in a
   table cell after `|`, a space inside `30. 06.2026` and `4. 854,80`), and the same OCR

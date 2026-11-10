@@ -1,39 +1,39 @@
 {
- "run_at": "2026-11-10T13:01:19",
+ "run_at": "2026-11-10T13:45:48",
  "mutations": [
   {
    "name": "totals check switched off",
    "file": "invoice_ocr/checks.py",
-   "with_mutation": "RED: 7 failed, 36 passed in 9.46s",
-   "after_restore": "GREEN: 43 passed in 9.29s",
+   "with_mutation": "RED: 7 failed, 38 passed in 6.80s",
+   "after_restore": "GREEN: 45 passed in 6.54s",
    "ok": true
   },
   {
    "name": "status ignores the issues",
    "file": "invoice_ocr/checks.py",
-   "with_mutation": "RED: 3 failed, 40 passed in 9.16s",
-   "after_restore": "GREEN: 43 passed in 8.20s",
+   "with_mutation": "RED: 3 failed, 42 passed in 6.58s",
+   "after_restore": "GREEN: 45 passed in 6.59s",
    "ok": true
   },
   {
    "name": "gate trusts the declared status",
    "file": "invoice_ocr/pipeline.py",
-   "with_mutation": "RED: 2 failed, 41 passed in 9.77s",
-   "after_restore": "GREEN: 43 passed in 8.91s",
+   "with_mutation": "RED: 2 failed, 43 passed in 6.37s",
+   "after_restore": "GREEN: 45 passed in 6.88s",
    "ok": true
   },
   {
    "name": "export skips the gate",
    "file": "invoice_ocr/pipeline.py",
-   "with_mutation": "RED: 1 failed, 42 passed in 9.96s",
-   "after_restore": "GREEN: 43 passed in 10.18s",
+   "with_mutation": "RED: 1 failed, 44 passed in 7.12s",
+   "after_restore": "GREEN: 45 passed in 6.33s",
    "ok": true
   },
   {
    "name": "schema accepts any status note",
    "file": "invoice_ocr/schema/ubl-subset-cbc.xsd",
-   "with_mutation": "RED: 1 failed, 42 passed in 8.80s",
-   "after_restore": "GREEN: 43 passed in 11.17s",
+   "with_mutation": "RED: 1 failed, 44 passed in 6.22s",
+   "after_restore": "GREEN: 45 passed in 7.18s",
    "ok": true
   }
  ]

@@ -108,10 +108,10 @@ Not flagged, by design of the checks: the invoice number (no checksum to test it
 
 | Mutation | File | Tests with mutation | Tests after restore |
 |---|---|---|---|
-| totals check switched off | `invoice_ocr/checks.py` | RED: 7 failed, 36 passed in 9.46s | GREEN: 43 passed in 9.29s |
-| status ignores the issues | `invoice_ocr/checks.py` | RED: 3 failed, 40 passed in 9.16s | GREEN: 43 passed in 8.20s |
-| gate trusts the declared status | `invoice_ocr/pipeline.py` | RED: 2 failed, 41 passed in 9.77s | GREEN: 43 passed in 8.91s |
-| export skips the gate | `invoice_ocr/pipeline.py` | RED: 1 failed, 42 passed in 9.96s | GREEN: 43 passed in 10.18s |
-| schema accepts any status note | `invoice_ocr/schema/ubl-subset-cbc.xsd` | RED: 1 failed, 42 passed in 8.80s | GREEN: 43 passed in 11.17s |
+| totals check switched off | `invoice_ocr/checks.py` | RED: 7 failed, 38 passed in 6.80s | GREEN: 45 passed in 6.54s |
+| status ignores the issues | `invoice_ocr/checks.py` | RED: 3 failed, 42 passed in 6.58s | GREEN: 45 passed in 6.59s |
+| gate trusts the declared status | `invoice_ocr/pipeline.py` | RED: 2 failed, 43 passed in 6.37s | GREEN: 45 passed in 6.88s |
+| export skips the gate | `invoice_ocr/pipeline.py` | RED: 1 failed, 44 passed in 7.12s | GREEN: 45 passed in 6.33s |
+| schema accepts any status note | `invoice_ocr/schema/ubl-subset-cbc.xsd` | RED: 1 failed, 44 passed in 6.22s | GREEN: 45 passed in 7.18s |
 
-Run at 2026-11-10T13:01:19.
+Run at 2026-11-10T13:45:48.
