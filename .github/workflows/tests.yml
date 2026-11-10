@@ -1,0 +1,25 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.8"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Light dependencies (no torch, no VLM)
+        run: pip install -r requirements.txt
+      - name: Unit tests, text layer and RapidOCR (about 15 MB of weights)
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+          REQUIRE_RAPIDOCR: "1"
+        run: python -m pytest -q
