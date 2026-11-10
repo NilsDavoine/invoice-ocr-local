@@ -188,3 +188,7 @@ invoice_ocr/
 tools/mutate.py   mutation test of the guard
 tests/            unit tests (pytest)
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party models keep their own licenses.
