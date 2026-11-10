@@ -12,7 +12,8 @@
   "wall_seconds": 2289.0,
   "machine": "x86_64, Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz (8 threads)",
   "gpu": "NVIDIA GeForce GTX 1650",
-  "rescored_at": "2026-11-10T13:38:11"
+  "rescored_at": "2026-11-10T15:16:37",
+  "rules": "9f75a8693684"
  },
  "records": [
   {

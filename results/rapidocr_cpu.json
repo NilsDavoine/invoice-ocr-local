@@ -12,7 +12,8 @@
   "wall_seconds": 267.7,
   "machine": "x86_64, Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz (8 threads)",
   "gpu": null,
-  "rescored_at": "2026-11-10T13:38:10"
+  "rescored_at": "2026-11-10T15:16:37",
+  "rules": "9f75a8693684"
  },
  "records": [
   {
