@@ -99,7 +99,7 @@ def _invoice_number(rows):
         end = _find_label(row, "number")
         if end is None:
             continue
-        rest = re.sub(r"^\s*[°º'’\"o]?\.?\s*[:#]?\s*", "", row[end:])
+        rest = re.sub(r"^\s*[°º'’\"o]?\.?\s*[:#|]?\s*", "", row[end:])   # "|": a table cell
         m = NUMBER_RE.match(rest)
         if not m and i + 1 < len(rows) and not _has_any_label(rows[i + 1]):
             m = NUMBER_RE.match(rows[i + 1].strip())

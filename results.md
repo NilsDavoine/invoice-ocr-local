@@ -10,38 +10,42 @@ Dataset: fictitious invoices from `python -m invoice_ocr generate` (seed 2026), 
 |---|---|---|---|---|
 | `textlayer_cpu` | No OCR: PDF text layer (upper bound of the rules) | cpu | 40 | - |
 | `rapidocr_cpu` | RapidOCR (PP-OCR det + en PP-OCRv3 rec, ONNX) | cpu | 40 | - |
+| `xiaomi_cuda_rules_v1` | PP-DocLayoutV3 + Xiaomi-OCR-0 (the real tool's pair) | cuda (NVIDIA GeForce GTX 1650) | 40 | 16.5 s |
+| `xiaomi_cuda` | PP-DocLayoutV3 + Xiaomi-OCR-0 (the real tool's pair) | cuda (NVIDIA GeForce GTX 1650) | 40 | 16.5 s |
 
 Machine: x86_64, Intel(R) Core(TM) i5-9300H CPU @ 2.40GHz (8 threads).
 
+`xiaomi_cuda_rules_v1` is the same OCR output scored with the extraction rules of the first commit. Three formatting quirks of the VLM output were then handled (a value in a table cell after `|`, a space inside a date `30. 06.2026` and inside an amount `4. 854,80`) and `xiaomi_cuda` was rescored with `python -m invoice_ocr rescore`. The rules were tuned on this same dataset: there is no held-out set.
+
 ## Field accuracy
 
-| Field | `textlayer_cpu` | `rapidocr_cpu` |
-|---|---|---|
-| supplier_name | 100 % | 62 % |
-| supplier_vat | 100 % | 100 % |
-| invoice_number | 100 % | 100 % |
-| issue_date | 100 % | 100 % |
-| due_date | 100 % | 100 % |
-| net_total | 100 % | 100 % |
-| tax_total | 100 % | 100 % |
-| gross_total | 100 % | 100 % |
-| vat_breakdown | 100 % | 100 % |
+| Field | `textlayer_cpu` | `rapidocr_cpu` | `xiaomi_cuda_rules_v1` | `xiaomi_cuda` |
+|---|---|---|---|---|
+| supplier_name | 100 % | 62 % | 100 % | 100 % |
+| supplier_vat | 100 % | 100 % | 100 % | 100 % |
+| invoice_number | 100 % | 100 % | 75 % | 100 % |
+| issue_date | 100 % | 100 % | 98 % | 100 % |
+| due_date | 100 % | 100 % | 98 % | 100 % |
+| net_total | 100 % | 100 % | 95 % | 100 % |
+| tax_total | 100 % | 100 % | 98 % | 100 % |
+| gross_total | 100 % | 100 % | 95 % | 100 % |
+| vat_breakdown | 100 % | 100 % | 95 % | 100 % |
 
 ## Invoice level and safety
 
-| Measure | `textlayer_cpu` | `rapidocr_cpu` |
-|---|---|---|
-| Invoices with every field right | 40/40 (100 %) | 25/40 (62 %) |
-| Normal invoices (no anomaly) with at least one wrong field | 0 | 12 |
-| ... of which flagged TO_VERIFY / rejected (caught) | 0/0 (n/a) | 0/12 (0 %) |
-| **Exported OK but wrong (silent errors)** | **0** | **12** |
-| ... of which on a field the checks cover (not the supplier name) | 0 | 0 |
-| Deliberate anomalies flagged | 4/4 | 4/4 |
-| False alarms (all fields right, no anomaly, still flagged) | 0/36 | 0/24 |
-| Exported as OK | 36/40 | 36/40 |
-| Time per page, median | 4 ms | 6.3 s |
-| Time per page, mean | 4 ms | 6.5 s |
-| Time per page, max | 31 ms | 8.6 s |
+| Measure | `textlayer_cpu` | `rapidocr_cpu` | `xiaomi_cuda_rules_v1` | `xiaomi_cuda` |
+|---|---|---|---|---|
+| Invoices with every field right | 40/40 (100 %) | 25/40 (62 %) | 26/40 (65 %) | 40/40 (100 %) |
+| Normal invoices (no anomaly) with at least one wrong field | 0 | 12 | 12 | 0 |
+| ... of which flagged TO_VERIFY / rejected (caught) | 0/0 (n/a) | 0/12 (0 %) | 9/12 (75 %) | 0/0 (n/a) |
+| **Exported OK but wrong (silent errors)** | **0** | **12** | **3** | **0** |
+| ... of which on a field the checks cover (not the supplier name) | 0 | 0 | 3 | 0 |
+| Deliberate anomalies flagged | 4/4 | 4/4 | 4/4 | 4/4 |
+| False alarms (all fields right, no anomaly, still flagged) | 0/36 | 0/24 | 0/24 | 0/36 |
+| Exported as OK | 36/40 | 36/40 | 27/40 | 36/40 |
+| Time per page, median | 4 ms | 6.3 s | 52.8 s | 52.8 s |
+| Time per page, mean | 4 ms | 6.5 s | 56.7 s | 56.7 s |
+| Time per page, max | 31 ms | 8.6 s | 109.4 s | 109.4 s |
 
 Time per page covers deskew + layout + reading; field extraction, checks and XML add a few milliseconds. Model loading is listed separately.
 
@@ -60,19 +64,25 @@ Silent errors in `rapidocr_cpu`:
 - INV-37: supplier_name read 'fictivabureautiquesari', truth 'fictivabureautiquesarl'
 - INV-38: supplier_name read 'imaginairetraiteursari', truth 'imaginairetraiteursarl'
 
+Silent errors in `xiaomi_cuda_rules_v1`:
+
+- INV-00: invoice_number read '77', truth 'RE2026/300'
+- INV-17: invoice_number read '77', truth 'INV-20619'
+- INV-18: invoice_number read '12', truth 'F-2026-0118'
+
 ## Scanned pages only (field accuracy)
 
-| Field | `textlayer_cpu` | `rapidocr_cpu` |
-|---|---|---|
-| supplier_name | n/a | 67 % |
-| supplier_vat | n/a | 100 % |
-| invoice_number | n/a | 100 % |
-| issue_date | n/a | 100 % |
-| due_date | n/a | 100 % |
-| net_total | n/a | 100 % |
-| tax_total | n/a | 100 % |
-| gross_total | n/a | 100 % |
-| vat_breakdown | n/a | 100 % |
+| Field | `textlayer_cpu` | `rapidocr_cpu` | `xiaomi_cuda_rules_v1` | `xiaomi_cuda` |
+|---|---|---|---|---|
+| supplier_name | n/a | 67 % | 100 % | 100 % |
+| supplier_vat | n/a | 100 % | 100 % | 100 % |
+| invoice_number | n/a | 100 % | 72 % | 100 % |
+| issue_date | n/a | 100 % | 94 % | 100 % |
+| due_date | n/a | 100 % | 94 % | 100 % |
+| net_total | n/a | 100 % | 94 % | 100 % |
+| tax_total | n/a | 100 % | 94 % | 100 % |
+| gross_total | n/a | 100 % | 94 % | 100 % |
+| vat_breakdown | n/a | 100 % | 94 % | 100 % |
 
 ## Simulated misreads (how much the checks catch)
 
@@ -91,3 +101,17 @@ Silent errors in `rapidocr_cpu`:
 
 Not flagged, by design of the checks: the invoice number (no checksum to test it against) and a date that stays plausible.
 
+
+## Mutation test of the guard
+
+`python -m tools.mutate` breaks the guarded code on purpose, runs the tests, expects them to fail, then restores the file from a backup copy and checks the tests pass again.
+
+| Mutation | File | Tests with mutation | Tests after restore |
+|---|---|---|---|
+| totals check switched off | `invoice_ocr/checks.py` | RED: 7 failed, 36 passed in 9.46s | GREEN: 43 passed in 9.29s |
+| status ignores the issues | `invoice_ocr/checks.py` | RED: 3 failed, 40 passed in 9.16s | GREEN: 43 passed in 8.20s |
+| gate trusts the declared status | `invoice_ocr/pipeline.py` | RED: 2 failed, 41 passed in 9.77s | GREEN: 43 passed in 8.91s |
+| export skips the gate | `invoice_ocr/pipeline.py` | RED: 1 failed, 42 passed in 9.96s | GREEN: 43 passed in 10.18s |
+| schema accepts any status note | `invoice_ocr/schema/ubl-subset-cbc.xsd` | RED: 1 failed, 42 passed in 8.80s | GREEN: 43 passed in 11.17s |
+
+Run at 2026-11-10T13:01:19.

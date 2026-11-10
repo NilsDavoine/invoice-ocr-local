@@ -21,9 +21,10 @@ def fold(s: str) -> str:
 # --- amounts -------------------------------------------------------------------------
 
 # 1 234,56 | 1.234,56 | 1,234.56 | 1234.56 — exactly two decimals, never a percentage,
-# never the "12.03" of a date such as 12.03.2026.
+# never the "12.03" of a date such as 12.03.2026. A VLM sometimes adds a space after the
+# thousands separator ("4. 854,80"): tolerated.
 AMOUNT_RE = re.compile(
-    r"(?<![\d.,])-?(?:\d{1,3}(?:[   .,']\d{3})+|\d+)[.,]\d{2}(?![.,]?\d)(?!\s?%)"
+    r"(?<![\d.,])-?(?:\d{1,3}(?:[   .,']\s?\d{3})+|\d+)[.,]\d{2}(?![.,]?\d)(?!\s?%)"
 )
 
 
@@ -70,7 +71,7 @@ _MONTH_WORD = "|".join(sorted(_MONTH_LOOKUP, key=len, reverse=True))
 
 _DATE_PATTERNS = [
     (re.compile(r"(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)"), lambda m: (m[1], m[2], m[3])),
-    (re.compile(r"(?<!\d)(\d{1,2})[./-](\d{1,2})[./-](\d{4})(?!\d)"), lambda m: (m[3], m[2], m[1])),
+    (re.compile(r"(?<!\d)(\d{1,2})[./-]\s?(\d{1,2})[./-]\s?(\d{4})(?!\d)"), lambda m: (m[3], m[2], m[1])),
     (re.compile(rf"(?<!\d)(\d{{1,2}})(?:er)?\.?\s*({_MONTH_WORD})\.?\s*(\d{{4}})"),
      lambda m: (m[3], _MONTH_LOOKUP[m[2]], m[1])),
     (re.compile(rf"\b({_MONTH_WORD})\.?\s*(\d{{1,2}}),?\s*(\d{{4}})"),

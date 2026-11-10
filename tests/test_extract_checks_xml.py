@@ -32,6 +32,11 @@ def test_ocr_without_spaces_still_extracts():
     assert ex.vat_breakdown == [{"rate": 17, "base": Decimal("100.00"), "tax": Decimal("17.00")}]
 
 
+def test_value_in_a_table_cell():
+    rows = ["Dummy Garage", "Facture n° | RE2026/300", "77, rue du Prototype"]
+    assert extract(rows).invoice_number == "RE2026/300"
+
+
 def test_line_items_are_not_taken_as_vat_breakdown():
     rows = ["Toner  2  50,00 €  17 %  100,00 €", "Total HT 100,00 €", "TVA 17 % sur 100,00 € 17,00 €"]
     assert extract(rows).vat_breakdown == [{"rate": 17, "base": Decimal("100.00"), "tax": Decimal("17.00")}]

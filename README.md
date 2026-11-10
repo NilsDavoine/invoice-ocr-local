@@ -72,22 +72,38 @@ flowchart LR
 
 ## Results
 
-Measured by `./run_benchmarks.sh --vlm` on a laptop (8 threads, GTX 1650 4 GB) shared
-with other jobs. Generated numbers only:
+Measured by `./run_benchmarks.sh --vlm` on a laptop (Intel i5-9300H, 8 threads,
+GTX 1650 4 GB) that was running other jobs at the same time, so timings are pessimistic
+and noisy. Generated numbers only:
 
 <!-- results:start -->
 | Run | Pages | Every field right | Reading errors caught | Silent errors (of which not the name) | Anomalies flagged | Time / page (median) |
 |---|---|---|---|---|---|---|
 | No OCR: PDF text layer — cpu | 40 | 100 % | 0/0 | 0 (0) | 4/4 | 4 ms |
 | RapidOCR — cpu | 40 | 62 % | 0/12 | 12 (0) | 4/4 | 6.3 s |
+| PP-DocLayoutV3 + Xiaomi-OCR-0 — cuda, NVIDIA GeForce GTX 1650 — first rules, before fixes | 40 | 65 % | 9/12 | 3 (3) | 4/4 | 52.8 s |
+| PP-DocLayoutV3 + Xiaomi-OCR-0 — cuda, NVIDIA GeForce GTX 1650 | 40 | 100 % | 0/0 | 0 (0) | 4/4 | 52.8 s |
 
 _Copied here by `python -m invoice_ocr report`; full tables in [results.md](results.md)._
 <!-- results:end -->
 
-"Errors caught" counts the invoices that have at least one wrong field and still did
-not leave as `OK`. "Silent errors" are invoices exported `OK` with a wrong field: the
-number that matters most. See [results.md](results.md) for per-field accuracy, scanned
-pages only, and the list of every silent error.
+"Reading errors caught" counts the normal invoices (the 4 deliberate anomalies are
+counted apart) that have at least one wrong field and still did not leave as `OK`.
+"Silent errors" are invoices exported `OK` with a wrong field: the number that matters
+most. In brackets, those whose wrong field is one the checks are meant to protect (not
+the supplier name, which no arithmetic can test). See [results.md](results.md) for
+per-field accuracy, scanned pages only, and the list of every silent error.
+
+### How much do the checks catch? Simulated misreads
+
+The OCR engines rarely misread the digits of these clean pages, so real OCR errors
+barely exercise the checks. `python -m invoice_ocr stress` starts from a perfect reading
+and replaces one digit of one row (mostly typical OCR confusions such as 3/8 or 1/7),
+1,800 times. Every misread that changed an amount, the VAT breakdown or the VAT number
+was flagged; dates were flagged when the misread made them implausible (about 80 %);
+the invoice number never is (nothing to check it against). Full table in
+[results.md](results.md). Sums are checked to the cent, as in the EN 16931 rules
+BR-CO-14 and BR-CO-15; a 0.01 tolerance first let a one-cent misread through.
 
 ### The guard, tested by mutation
 
@@ -104,7 +120,7 @@ amount 300 times and asserts that an incoherent result is never exported `OK`.
 ```bash
 make setup            # Python 3.12 venv (PYTHON=python3.12) + light dependencies (CPU)
 make data             # 40 invoices in data/ (about a minute)
-make test             # 42 unit tests, no model needed
+make test             # 43 unit tests, no model needed
 python -m invoice_ocr process data/images/INV-02.png --engine rapidocr --xml
 make bench            # textlayer + RapidOCR + mutation test -> results.md
 
@@ -123,8 +139,19 @@ Hugging Face on first use, at pinned revisions; nothing else leaves the machine.
   GPU in fp16. Without the optional `flash-linear-attention` / `causal-conv1d` kernels,
   Transformers falls back to its reference implementation of the model's linear
   attention, which is slow; on CPU a page takes minutes, so the CPU figure is measured
-  on 3 pages only. RapidOCR is the practical CPU option. Tesseract was not used: it is
+  on 3 pages only (about 50 s per page on the GPU, measured). RapidOCR is the practical
+  CPU option. Tesseract was not used: it is
   not installed on the build machine and needs a system package.
+- **The rules were tuned on the test set.** There is no held-out set. After the first
+  Xiaomi-OCR-0 run, three formatting quirks of its output were handled (a value in a
+  table cell after `|`, a space inside `30. 06.2026` and `4. 854,80`), and the same OCR
+  output was rescored. Both scorings are reported: before the fixes, 3 invoices left
+  `OK` with a wrong invoice number (the street number "77" read as the number), which
+  no arithmetic check can catch; after, 40/40. Read the 100 % as "the pipeline can be
+  made to fit these templates", not as expected accuracy.
+- **What RapidOCR gets wrong** here is almost only "S.à r.l." read as "S.a r.I.": every
+  amount, date, VAT number and invoice number was right, and every name error left as
+  `OK`. Supplier names are the weak spot of the checks (see below).
 - **Synthetic data is easier than real mail.** Three layouts, one page, clean fonts,
   printed totals. Real invoices have many more layouts, multi-page documents, credit
   notes, handwriting and stamps. The numbers here say the pipeline works end to end and

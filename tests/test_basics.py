@@ -44,5 +44,10 @@ def test_dates(text):
     assert find_date(f"Date : {text}") == date(2026, 3, 12)
 
 
+def test_vlm_spacing_quirks():
+    assert find_date("Rechnungsdatum  30. 06.2026") == date(2026, 6, 30)
+    assert amounts_in("Summe netto  4. 854,80 €") == [Decimal("4854.80")]
+
+
 def test_impossible_date_is_none():
     assert find_date("31/02/2026") is None

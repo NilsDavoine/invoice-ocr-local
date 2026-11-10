@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .evaluate import FIELDS
 
-ORDER = ["textlayer_cpu", "rapidocr_cpu", "xiaomi_cuda", "xiaomi_cpu_subset", "xiaomi_cpu"]
+ORDER = ["textlayer_cpu", "rapidocr_cpu", "xiaomi_cuda_rules_v1", "xiaomi_cuda", "xiaomi_cpu_subset", "xiaomi_cpu"]
 TITLES = {
     "textlayer": "No OCR: PDF text layer (upper bound of the rules)",
     "rapidocr": "RapidOCR (PP-OCR det + en PP-OCRv3 rec, ONNX)",
@@ -75,6 +75,11 @@ def write(results_dir="results", out="results.md"):
         L.append(f"| `{k}` | {TITLES.get(m['engine'], m['engine'])} | {dev} | {m['n']}"
                  f"{' (subset)' if m['subset'] else ''} | {_sec(m['load_seconds']) if m['load_seconds'] else '-'} |")
     L += ["", f"Machine: {runs[keys[0]]['meta']['machine']}." if keys else "", "",
+          "`xiaomi_cuda_rules_v1` is the same OCR output scored with the extraction rules of the "
+          "first commit. Three formatting quirks of the VLM output were then handled (a value in a "
+          "table cell after `|`, a space inside a date `30. 06.2026` and inside an amount `4. 854,80`) "
+          "and `xiaomi_cuda` was rescored with `python -m invoice_ocr rescore`. The rules were tuned "
+          "on this same dataset: there is no held-out set.", "",
           "## Field accuracy", "", "| Field | " + " | ".join(f"`{k}`" for k in keys) + " |",
           "|---|" + "---|" * len(keys)]
     for f in FIELDS:
@@ -155,7 +160,8 @@ def _readme_block(keys, S, runs, readme="README.md"):
     for k in keys:
         s, m = S[k], runs[k]["meta"]
         dev = m["device"] + (f", {m['gpu']}" if m.get("gpu") else "")
-        L.append(f"| {TITLES.get(m['engine'], m['engine']).split(' (')[0]} — {dev} | {s['n']} | "
+        tag = " — first rules, before fixes" if "rules_v1" in k else ""
+        L.append(f"| {TITLES.get(m['engine'], m['engine']).split(' (')[0]} — {dev}{tag} | {s['n']} | "
                  f"{pct(s['all_correct'], s['n'])} | {s['caught']}/{s['with_err']} | {len(s['silent'])} ({len(s['silent_checked'])}) | "
                  f"{s['anomalies_flagged']}/{s['anomalies']} | {_sec(s['sec_median'])} |")
     L += ["", "_Copied here by `python -m invoice_ocr report`; full tables in [results.md](results.md)._", ""]
